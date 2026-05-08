@@ -131,6 +131,29 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
+// GET /api/stores/my-store — get store owned by logged-in user
+router.get('/my-store', auth, async (req, res) => {
+  try {
+    const { data: store, error } = await supabase
+      .from('medicine_stores')
+      .select('*')
+      .eq('owner_id', req.userId)
+      .single();
+
+    if (error || !store) return res.status(404).json({ error: 'No store found for this account' });
+
+    const { data: inventory } = await supabase
+      .from('store_inventory')
+      .select('*')
+      .eq('store_id', store.id)
+      .order('medicine_name');
+
+    res.json({ ...store, inventory: inventory || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PATCH /api/stores/:id — update store info
 router.patch('/:id', auth, async (req, res) => {
   try {
