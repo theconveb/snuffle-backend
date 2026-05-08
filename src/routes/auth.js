@@ -8,16 +8,19 @@ const auth = require('../middleware/auth');
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, full_name, phone } = req.body;
+    const { email, password, full_name, phone, role } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+
+    const validRoles = ['pet_owner', 'store_owner'];
+    const userRole = validRoles.includes(role) ? role : 'pet_owner';
 
     const { data: existing } = await supabase.from('users').select('id').eq('email', email).single();
     if (existing) return res.status(409).json({ error: 'Email already registered' });
 
     const password_hash = await bcrypt.hash(password, 12);
     const { data: user, error } = await supabase.from('users')
-      .insert({ email, password_hash, full_name, phone })
-      .select('id, email, full_name, phone, avatar_url, created_at')
+      .insert({ email, password_hash, full_name, phone, role: userRole })
+      .select('id, email, full_name, phone, avatar_url, role, created_at')
       .single();
 
     if (error) throw error;
@@ -25,7 +28,6 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
     res.status(201).json({ token, user });
   } catch (err) {
-    console.error('Registration Error Details:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -54,7 +56,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const { data: user, error } = await supabase.from('users')
-      .select('id, email, full_name, phone, avatar_url, created_at')
+      .select('id, email, full_name, phone, avatar_url, role, created_at')
       .eq('id', req.userId).single();
     if (error) throw error;
     res.json(user);
