@@ -1,6 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-const morgan = require('morgan');
 const cors = require('cors');
 
 const app = express();
@@ -9,18 +8,6 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan('dev'));
-
-// ─── Custom Request Logger ───────────────────────────────
-// app.use((req, res, next) => {
-//   const now = new Date().toLocaleTimeString();
-//   console.log(`[${now}] ${req.method} ${req.url}`);
-  
-//   if (Object.keys(req.body).length > 0) {
-//     console.log('Body:', JSON.stringify(req.body, null, 2));
-//   }
-//   next();
-// });
 
 // ─── Routes ──────────────────────────────────────────────
 const authRoutes       = require('./routes/auth');
@@ -33,6 +20,7 @@ const activityRoutes   = require('./routes/activities');
 const budgetRoutes     = require('./routes/budget');
 const storeRoutes      = require('./routes/stores');
 const { quickLog, documents, notifications } = require('./routes/misc');
+const adminRoutes = require('./routes/admin');
 
 app.use('/api/auth',           authRoutes);
 app.use('/api/pets',           petRoutes);
@@ -46,6 +34,7 @@ app.use('/api/stores',         storeRoutes);
 app.use('/api',                quickLog);
 app.use('/api/documents',      documents);
 app.use('/api/notifications',  notifications);
+app.use('/api/admin',          adminRoutes);
 
 // ─── Health check ─────────────────────────────────────────
 app.get('/', (req, res) => {
@@ -105,12 +94,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`
-  ███████╗███╗   ██╗██╗   ██╗███████╗███████╗██╗     ███████╗
-  ██╔════╝████╗  ██║██║   ██║██╔════╝██╔════╝██║     ██╔════╝
-  ███████╗██╔██╗ ██║██║   ██║█████╗  █████╗  ██║     █████╗  
-  ╚════██║██║╚██╗██║██║   ██║██╔══╝  ██╔══╝  ██║     ██╔══╝  
-  ███████║██║ ╚████║╚██████╔╝██║     ██║     ███████╗███████╗
-  ╚══════╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝     ╚═╝     ╚══════╝╚══════╝
+  Server is up and running!
   
   API running on http://localhost:${PORT}
   `);
