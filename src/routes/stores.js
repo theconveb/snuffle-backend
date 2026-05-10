@@ -141,8 +141,26 @@ router.get('/:id', async (req, res) => {
 // POST /api/stores — register your store
 router.post('/', auth, async (req, res) => {
   try {
-    const { name, address, city, state, pincode, phone, email, lat, lng, opening_time, closing_time, open_days } = req.body;
+    const { name, address, city, state, pincode, phone, email, opening_time, closing_time, open_days } = req.body;
     if (!name || !city) return res.status(400).json({ error: 'name and city required' });
+
+    let lat = null, lng = null;
+
+    // Auto-geocode address using OpenStreetMap Nominatim (free)
+    try {
+      const searchQuery = [address, city, state, pincode, 'India'].filter(Boolean).join(', ');
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`,
+        { headers: { 'User-Agent': 'PawFind/1.0' } }
+      );
+      const geoData = await geoRes.json();
+      if (geoData && geoData.length > 0) {
+        lat = parseFloat(geoData[0].lat);
+        lng = parseFloat(geoData[0].lon);
+      }
+    } catch (geoErr) {
+      console.log('Geocoding failed, continuing without coordinates:', geoErr.message);
+    }
 
     const { data, error } = await supabase.from('medicine_stores')
       .insert({ owner_id: req.userId, name, address, city, state, pincode, phone, email, lat, lng, opening_time, closing_time, open_days })
@@ -159,9 +177,28 @@ router.post('/', auth, async (req, res) => {
 // PATCH /api/stores/:id — update store info
 router.patch('/:id', auth, async (req, res) => {
   try {
-    const { name, address, phone, lat, lng, opening_time, closing_time, open_days } = req.body;
+    const { name, address, city, state, pincode, phone, lat: manualLat, lng: manualLng, opening_time, closing_time, open_days } = req.body;
+
+    let lat = manualLat, lng = manualLng;
+
+    // Re-geocode if address changed
+    if (address && city && !manualLat) {
+      try {
+        const searchQuery = [address, city, state, pincode, 'India'].filter(Boolean).join(', ');
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`,
+          { headers: { 'User-Agent': 'PawFind/1.0' } }
+        );
+        const geoData = await geoRes.json();
+        if (geoData && geoData.length > 0) {
+          lat = parseFloat(geoData[0].lat);
+          lng = parseFloat(geoData[0].lon);
+        }
+      } catch (_) {}
+    }
+
     const { data, error } = await supabase.from('medicine_stores')
-      .update({ name, address, phone, lat, lng, opening_time, closing_time, open_days, updated_at: new Date() })
+      .update({ name, address, city, state, pincode, phone, lat, lng, opening_time, closing_time, open_days, updated_at: new Date() })
       .eq('id', req.params.id).eq('owner_id', req.userId).select().single();
     if (error) throw error;
     res.json(data);
