@@ -172,7 +172,21 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-
+// GET /api/stores/all — all stores in India (for map)
+router.get('/all', async (req, res) => {
+  try {
+    const { data: stores, error } = await supabase
+      .from('medicine_stores')
+      .select('id, name, address, city, state, lat, lng, phone, is_verified, is_active')
+      .eq('is_active', true)
+      .not('lat', 'is', null)
+      .not('lng', 'is', null);
+    if (error) throw error;
+    res.json({ count: stores.length, stores: stores || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // PATCH /api/stores/:id — update store info
 router.patch('/:id', auth, async (req, res) => {
